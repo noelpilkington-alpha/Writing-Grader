@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  grader:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persist the SQLite database
+      - ./grader/grading.db:/app/grader/grading.db
+      # Mount prompts and test content so they can be updated without rebuild
+      - "./Revised Prompts V2:/app/Revised Prompts V2:ro"
+      - ./grader/test_content_cache.json:/app/grader/test_content_cache.json:ro
+    restart: unless-stopped

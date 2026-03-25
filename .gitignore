@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Environment / Secrets
+.env
+*.env.local
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Student data (private — never commit)
+Tests to Grade/
+Graded tests/
+Regraded tests/
+Reports/
+Student test CSV/
+Tests for prompt testing/
+G3/
+G4/
+G5/
+G6/
+G7/
+G8/
+grader/results/
+
+# Individual student grading scripts
+grader/_grade_*.py
+
+# Cached/extracted data
+grader/test_content_cache.json
+grader/extracted_graded_tests.json
+grader/_original_prompts_missing.json
+
+# Temp files
+*.png
+*.bak
+*.docx
+
+# IDE / Local config
+.vscode/
+.idea/
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+*.log

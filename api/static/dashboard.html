@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing Test Grader</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #3f4f67;
+  --text: #e2e8f0; --muted: #94a3b8; --dim: #64748b; --accent: #38bdf8; --accent2: #818cf8;
+  --green: #4ade80; --red: #f87171; --yellow: #fbbf24; --orange: #fb923c;
+  --border: #475569; --radius: 8px; --radius-lg: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; position: fixed; height: 100vh; overflow-y: auto; }
+.main { flex: 1; margin-left: 220px; padding: 24px 32px; max-width: 1100px; }
+
+/* Sidebar */
+.sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.sidebar .logo h1 { font-size: 1.1rem; color: var(--accent); font-weight: 700; }
+.sidebar .logo p { font-size: 0.7rem; color: var(--dim); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; color: var(--muted); font-size: 0.88rem; transition: all 0.15s; border-left: 3px solid transparent; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { color: var(--accent); background: rgba(56, 189, 248, 0.08); border-left-color: var(--accent); }
+.nav-item .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+.nav-section { padding: 16px 20px 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
+.sidebar-footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 16px; border-top: 1px solid var(--border); }
+.conn-bar { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+.conn-dot.ok { background: var(--green); }
+.conn-bar input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; min-width: 0; }
+
+/* Page */
+.page { display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 24px; }
+.page-header h2 { font-size: 1.3rem; font-weight: 700; }
+.page-header p { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+.card h3 { font-size: 0.95rem; color: var(--accent); margin-bottom: 14px; font-weight: 600; }
+.card-row { display: flex; gap: 16px; margin-bottom: 16px; }
+.card-row > .card { flex: 1; margin-bottom: 0; }
+
+/* Forms */
+label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; margin-top: 10px; font-weight: 500; }
+input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: var(--radius); font-size: 0.88rem; font-family: inherit; transition: border-color 0.15s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { min-height: 100px; resize: vertical; }
+.form-row { display: flex; gap: 12px; }
+.form-row > * { flex: 1; }
+.form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius); cursor: pointer; font-size: 0.88rem; font-weight: 500; font-family: inherit; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #0f172a; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface3); }
+.btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+.btn-icon { padding: 6px 10px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+th { text-align: left; padding: 10px 12px; background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: rgba(56, 189, 248, 0.04); }
+.table-actions { display: flex; gap: 4px; }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.badge-complete { background: rgba(74,222,128,0.12); color: var(--green); }
+.badge-running { background: rgba(251,191,36,0.12); color: var(--yellow); }
+.badge-pending { background: rgba(148,163,184,0.12); color: var(--muted); }
+.badge-failed { background: rgba(248,113,113,0.12); color: var(--red); }
+.badge-unanimous { background: rgba(74,222,128,0.12); color: var(--green); }
+.badge-majority { background: rgba(251,191,36,0.12); color: var(--yellow); }
+.badge-judge { background: rgba(129,140,248,0.15); color: var(--accent2); }
+.badge-single { background: rgba(148,163,184,0.12); color: var(--muted); }
+
+/* Stat cards */
+.stats { display: flex; gap: 12px; margin-bottom: 20px; }
+.stat { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.stat .value { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+.stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+/* Score display */
+.score-hero { display: flex; align-items: baseline; gap: 4px; }
+.score-hero .num { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+.score-hero .max { font-size: 1.2rem; color: var(--muted); }
+.score-bar { height: 6px; background: var(--surface2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.score-bar .fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* Result grid */
+.result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 16px; }
+.q-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.q-card .q-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.q-card .q-label { font-weight: 700; font-size: 0.9rem; }
+.q-card .q-score { font-size: 1.3rem; font-weight: 800; }
+.q-card .q-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+.q-card .q-feedback { font-size: 0.82rem; color: var(--text); line-height: 1.45; background: var(--surface); padding: 10px; border-radius: 6px; }
+.q-card .q-runs { font-size: 0.72rem; color: var(--dim); margin-top: 8px; }
+.q-card .q-response { font-size: 0.8rem; color: var(--muted); margin-top: 8px; padding: 8px; background: var(--surface2); border-radius: 6px; font-style: italic; max-height: 60px; overflow-y: auto; }
+
+/* QC Panel */
+.qc-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-top: 12px; }
+.qc-runs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+.qc-run { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.qc-run.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.qc-run h4 { font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+
+/* Progress indicator */
+.progress-ring { display: inline-flex; align-items: center; gap: 8px; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Dropzone */
+.dropzone { border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 32px; text-align: center; cursor: pointer; transition: all 0.15s; }
+.dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(56,189,248,0.04); }
+.dropzone .icon { font-size: 2rem; margin-bottom: 8px; }
+.dropzone p { font-size: 0.85rem; color: var(--muted); }
+.dropzone .filename { color: var(--accent); font-weight: 600; }
+
+/* Toast */
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); padding: 12px 20px; border-radius: var(--radius); font-size: 0.85rem; z-index: 1000; display: none; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.toast.error { border-color: var(--red); color: var(--red); }
+.toast.success { border-color: var(--green); color: var(--green); }
+
+/* Tabs within a page */
+.subtabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface); border-radius: var(--radius); padding: 3px; width: fit-content; }
+.subtab { padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; color: var(--muted); }
+.subtab.active { background: var(--surface2); color: var(--text); }
+
+.empty { text-align: center; padding: 40px; color: var(--dim); font-size: 0.9rem; }
+.mono { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82rem; }
+.text-green { color: var(--green); }
+.text-yellow { color: var(--yellow); }
+.text-red { color: var(--red); }
+.text-muted { color: var(--muted); }
+.text-accent { color: var(--accent); }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+.flex { display: flex; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.flex-1 { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">
+      <h1>WritingGrader</h1>
+      <p>AI-Powered Assessment</p>
+    </div>
+    <div class="nav-section">Grading</div>
+    <div class="nav-item active" data-page="grade"><span class="icon">&#9998;</span> Grade</div>
+    <div class="nav-item" data-page="results"><span class="icon">&#9776;</span> Results</div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item" data-page="tests"><span class="icon">&#128218;</span> Tests</div>
+    <div class="nav-item" data-page="prompts"><span class="icon">&#128196;</span> Prompts</div>
+    <div class="sidebar-footer">
+      <div class="conn-bar">
+        <div class="conn-dot" id="connDot"></div>
+        <input type="password" id="apiKeyInput" placeholder="API Key" />
+        <button class="btn btn-sm btn-secondary" onclick="connect()" style="padding:3px 8px;font-size:0.7rem;">Go</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- ==================== GRADE PAGE ==================== -->
+    <div class="page active" id="page-grade">
+      <div class="page-header">
+        <h2>Grade a Submission</h2>
+        <p>Submit student responses for AI grading with 3-grader consensus.</p>
+      </div>
+
+      <div class="card-row">
+        <div class="card" style="flex:2;">
+          <h3>Student Info</h3>
+          <div class="form-row">
+            <div><label>Student Name</label><input id="g-name" placeholder="e.g. Luca Besaw" /></div>
+            <div><label>Test Code</label>
+              <select id="g-code" onchange="onTestCodeChange()">
+                <option value="">Select a test...</option>
+              </select>
+            </div>
+            <div style="max-width:100px;"><label>Runs</label>
+              <select id="g-runs"><option>1</option><option selected>3</option><option>5</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="flex:1;">
+          <h3>Upload PDF</h3>
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('g-pdf').click()">
+            <div class="icon">&#128196;</div>
+            <p id="dropLabel">Drop PDF here or click to browse</p>
+            <input type="file" id="g-pdf" accept=".pdf" style="display:none;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Student Responses</h3>
+        <p style="font-size:0.8rem;color:var(--dim);margin-bottom:10px;">Enter each question response. Leave blank for unanswered questions.</p>
+        <div id="responseFields">
+          <div class="subtabs mb-2">
+            <div class="subtab active" onclick="setResponseMode('form')">Form</div>
+            <div class="subtab" onclick="setResponseMode('json')">JSON</div>
+          </div>
+          <div id="responseForm"></div>
+          <div id="responseJson" style="display:none;">
+            <textarea id="g-responses-json" style="min-height:200px;font-family:monospace;font-size:0.82rem;" placeholder='{"1": "answer...", "2": "answer...", ...}'></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitGrade()" id="submitBtn">Submit for Grading</button>
+          <button class="btn btn-secondary" onclick="clearResponseFields()" id="clearBtn">Clear Fields</button>
+          <span id="submitStatus" style="font-size:0.82rem;color:var(--muted);"></span>
+        </div>
+      </div>
+
+      <!-- Live job tracker -->
+      <div id="liveJobs"></div>
+    </div>
+
+    <!-- ==================== RESULTS PAGE ==================== -->
+    <div class="page" id="page-results">
+      <div class="page-header">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2>Grading Results</h2>
+            <p>Browse past grading jobs, view scores, and export data.</p>
+          </div>
+          <div class="flex gap-2">
+            <input id="r-search" placeholder="Search student, test, or job ID..." style="width:250px;" oninput="debounceLoadJobs()" />
+            <select id="r-filter" onchange="loadJobs()" style="width:130px;">
+              <option value="">All statuses</option>
+              <option value="complete">Complete</option>
+              <option value="running">Running</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>Job ID</th><th>Student</th><th>Test</th><th>Score</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody id="jobsBody"><tr><td colspan="7" class="empty">Connect to load results</td></tr></tbody>
+      </table>
+
+      <div id="resultDetail" class="mt-4"></div>
+    </div>
+
+    <!-- ==================== TESTS PAGE ==================== -->
+    <div class="page" id="page-tests">
+      <div class="page-header">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2>Test Manager</h2>
+            <p>Create, edit, and manage writing tests.</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary btn-sm" onclick="syncFilesystem()">Sync from Filesystem</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadTests()">Refresh</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Create / Update Test</h3>
+        <div class="form-row">
+          <div style="max-width:140px;"><label>Test Code</label><input id="t-code" placeholder="e.g. G3.1" /></div>
+          <div style="max-width:100px;"><label>Grade</label>
+            <select id="t-grade"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select>
+          </div>
+          <div><label>Title</label><input id="t-title" placeholder="e.g. Restaurants Are Not for Dogs / Digging on Dirt" /></div>
+        </div>
+        <label>Passage</label><textarea id="t-passage" placeholder="Full reading passage text..."></textarea>
+        <label>Questions (JSON)</label><textarea id="t-questions" style="font-family:monospace;font-size:0.82rem;" placeholder='{"1": "Revise sentence 2...", "2": "Combine sentences 3 and 4..."}'></textarea>
+        <label>Q11 Article (optional)</label><textarea id="t-q11" placeholder="Separate article text for Q11..."></textarea>
+        <div class="form-actions"><button class="btn btn-primary" onclick="uploadTest()">Save Test</button></div>
+      </div>
+
+      <div class="card">
+        <h3>Registered Tests</h3>
+        <table>
+          <thead><tr><th>Code</th><th>Grade</th><th>Title</th><th>Updated</th></tr></thead>
+          <tbody id="testsBody"><tr><td colspan="4" class="empty">Connect to load tests</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== PROMPTS PAGE ==================== -->
+    <div class="page" id="page-prompts">
+      <div class="page-header">
+        <h2>Prompt Manager</h2>
+        <p>Upload and manage grading prompts for each test.</p>
+      </div>
+
+      <div class="card">
+        <h3>Upload / Update Prompt</h3>
+        <div class="form-row">
+          <div style="max-width:140px;"><label>Test Code</label><input id="p-code" placeholder="e.g. G3.1" /></div>
+          <div style="max-width:120px;"><label>Version</label><input id="p-version" value="V2" /></div>
+          <div style="flex:2;"><label>Check Existing</label>
+            <div class="flex gap-2" style="margin-top:0;">
+              <input id="p-check" placeholder="Enter test code..." />
+              <button class="btn btn-sm btn-secondary" onclick="checkPrompt()">Check</button>
+            </div>
+          </div>
+        </div>
+        <div id="promptInfo" class="mt-2"></div>
+        <label>Prompt Text</label>
+        <textarea id="p-text" style="min-height:400px;font-family:monospace;font-size:0.8rem;" placeholder="Paste full grading prompt here..."></textarea>
+        <div class="form-actions"><button class="btn btn-primary" onclick="uploadPrompt()">Save Prompt</button></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+let API_KEY = localStorage.getItem('wg_api_key') || '';
+let activeJobs = new Map(); // id -> {student, test, status}
+let pollTimer = null;
+let responseMode = 'form';
+let debounceTimer = null;
+let currentTestCode = '';
+
+let testsList = []; // cached test list for dropdown
+let currentFormMode = 'g3-5'; // 'g3-5' = Q1-Q11, 'g6-8' = Q11 only
+
+// Init
+document.getElementById('apiKeyInput').value = API_KEY;
+if (API_KEY) connect();
+buildResponseForm('g3-5');
+
+// --- Navigation ---
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-' + item.dataset.page).classList.add('active');
+    if (item.dataset.page === 'results') loadJobs();
+    if (item.dataset.page === 'tests') loadTests();
+  });
+});
+
+// --- API ---
+async function api(method, path, body = null) {
+  const opts = { method, headers: { 'X-API-Key': API_KEY } };
+  if (body && !(body instanceof FormData)) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body instanceof FormData) {
+    opts.body = body;
+  }
+  const res = await fetch(BASE + path, opts);
+  if (path.includes('/export') && res.ok) return res;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+// --- Connect ---
+async function connect() {
+  API_KEY = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('wg_api_key', API_KEY);
+  try {
+    await api('GET', '/health');
+    document.getElementById('connDot').classList.add('ok');
+    toast('Connected');
+    loadTestDropdown();
+  } catch (e) {
+    document.getElementById('connDot').classList.remove('ok');
+    toast('Connection failed: ' + e.message, 'error');
+  }
+}
+
+// --- Response form ---
+function buildResponseForm(mode) {
+  currentFormMode = mode;
+  const container = document.getElementById('responseForm');
+  let html = '';
+  if (mode === 'g6-8') {
+    html += `<div style="margin-bottom:8px;">
+      <label style="margin-top:6px;">Q11 <span style="color:var(--dim);font-size:0.72rem;">(Essay)</span></label>
+      <textarea id="resp-11" rows="8" placeholder="Student's essay response..."></textarea>
+    </div>`;
+  } else {
+    for (let i = 1; i <= 11; i++) {
+      const label = i <= 5 ? 'Edit' : i <= 10 ? 'Sentence' : 'Paragraph';
+      html += `<div style="margin-bottom:8px;">
+        <label style="margin-top:6px;">Q${i} <span style="color:var(--dim);font-size:0.72rem;">(${label})</span></label>
+        ${i === 11
+          ? `<textarea id="resp-${i}" rows="6" placeholder="Student's paragraph response..."></textarea>`
+          : `<input id="resp-${i}" placeholder="Student's response for Q${i}..." />`
+        }
+      </div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+function onTestCodeChange() {
+  const code = document.getElementById('g-code').value;
+  if (!code) return;
+  // Determine grade level from code (e.g. "G3.1" -> 3, "G7.2" -> 7)
+  const match = code.match(/G(\d)/i);
+  const grade = match ? parseInt(match[1]) : 3;
+  const newMode = grade >= 6 ? 'g6-8' : 'g3-5';
+  if (newMode !== currentFormMode) {
+    buildResponseForm(newMode);
+  }
+}
+
+async function loadTestDropdown() {
+  try {
+    const data = await api('GET', '/tests');
+    testsList = data.tests || [];
+    const select = document.getElementById('g-code');
+    // Preserve current selection
+    const current = select.value;
+    // Clear and rebuild options
+    select.innerHTML = '<option value="">Select a test...</option>';
+    // Sort tests by code
+    const sorted = [...testsList].sort((a, b) => a.test_code.localeCompare(b.test_code, undefined, {numeric: true}));
+    for (const t of sorted) {
+      const label = t.title ? `${t.test_code} — ${t.title}` : t.test_code;
+      select.innerHTML += `<option value="${t.test_code}">${label}</option>`;
+    }
+    if (current) select.value = current;
+  } catch (e) { /* silently fail if not connected yet */ }
+}
+
+function clearResponseFields() {
+  // Clear all response inputs
+  if (currentFormMode === 'g6-8') {
+    const el = document.getElementById('resp-11');
+    if (el) el.value = '';
+  } else {
+    for (let i = 1; i <= 11; i++) {
+      const el = document.getElementById('resp-' + i);
+      if (el) el.value = '';
+    }
+  }
+  // Clear JSON textarea too
+  document.getElementById('g-responses-json').value = '';
+  // Clear student name
+  document.getElementById('g-name').value = '';
+  // Reset PDF
+  pdfInput.value = '';
+  document.getElementById('dropLabel').innerHTML = 'Drop PDF here or click to browse';
+  toast('Fields cleared');
+}
+
+function setResponseMode(mode) {
+  responseMode = mode;
+  document.querySelectorAll('#responseFields .subtab').forEach(t => t.classList.remove('active'));
+  if (mode === 'form') {
+    document.getElementById('responseForm').style.display = '';
+    document.getElementById('responseJson').style.display = 'none';
+    document.querySelectorAll('#responseFields .subtab')[0].classList.add('active');
+  } else {
+    document.getElementById('responseForm').style.display = 'none';
+    document.getElementById('responseJson').style.display = '';
+    document.querySelectorAll('#responseFields .subtab')[1].classList.add('active');
+  }
+}
+
+function getResponses() {
+  if (responseMode === 'json') {
+    return JSON.parse(document.getElementById('g-responses-json').value);
+  }
+  const resp = {};
+  const questions = currentFormMode === 'g6-8' ? [11] : Array.from({length: 11}, (_, i) => i + 1);
+  for (const i of questions) {
+    const el = document.getElementById('resp-' + i);
+    if (el && el.value.trim()) resp[String(i)] = el.value.trim();
+  }
+  return resp;
+}
+
+// --- PDF upload ---
+const dropzone = document.getElementById('dropzone');
+const pdfInput = document.getElementById('g-pdf');
+
+['dragover','dragenter'].forEach(e => dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => dropzone.addEventListener(e, () => dropzone.classList.remove('dragover')));
+dropzone.addEventListener('drop', ev => { ev.preventDefault(); pdfInput.files = ev.dataTransfer.files; handlePdfSelect(); });
+pdfInput.addEventListener('change', handlePdfSelect);
+
+function handlePdfSelect() {
+  const file = pdfInput.files[0];
+  if (!file) return;
+  document.getElementById('dropLabel').innerHTML = `<span class="filename">${file.name}</span><br><span style="font-size:0.75rem;">Click "Submit" to upload and grade</span>`;
+}
+
+// --- Grade submission ---
+async function submitGrade() {
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('submitStatus');
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span> Submitting...';
+
+  try {
+    const testCode = document.getElementById('g-code').value.trim();
+    const studentName = document.getElementById('g-name').value.trim();
+    const numRuns = parseInt(document.getElementById('g-runs').value);
+
+    if (!testCode) throw new Error('Enter a test code');
+
+    let data;
+    const pdfFile = pdfInput.files[0];
+
+    if (pdfFile) {
+      const form = new FormData();
+      form.append('file', pdfFile);
+      let url = `/grade/pdf?test_code=${encodeURIComponent(testCode)}&num_runs=${numRuns}`;
+      if (studentName) url += `&student_name=${encodeURIComponent(studentName)}`;
+      data = await api('POST', url, form);
+    } else {
+      const responses = getResponses();
+      if (Object.keys(responses).length === 0) throw new Error('Enter at least one response or upload a PDF');
+      if (!studentName) throw new Error('Enter student name');
+      data = await api('POST', '/grade', { student_name: studentName, test_code: testCode, responses, num_runs: numRuns });
+    }
+
+    activeJobs.set(data.job_id, { student: studentName || '(from PDF)', test: testCode, status: 'pending' });
+    renderLiveJobs();
+    startPolling();
+    toast('Job submitted: ' + data.job_id);
+    status.textContent = '';
+    pdfInput.value = '';
+    document.getElementById('dropLabel').innerHTML = 'Drop PDF here or click to browse';
+  } catch (e) {
+    toast(e.message, 'error');
+    status.textContent = '';
+  }
+  btn.disabled = false;
+}
+
+// --- Live job tracker ---
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(pollJobs, 3000);
+}
+
+async function pollJobs() {
+  if (activeJobs.size === 0) { clearInterval(pollTimer); pollTimer = null; return; }
+  for (const [id, info] of activeJobs) {
+    try {
+      const s = await api('GET', `/grade/${id}/status`);
+      info.status = s.status;
+      info.student = s.student_name;
+      info.test = s.test_code;
+      if (s.status === 'complete') {
+        toast(`${s.student_name} grading complete!`);
+        // Auto-load result
+        const r = await api('GET', `/grade/${id}/result`);
+        info.result = r;
+      } else if (s.status === 'failed') {
+        toast(`Job ${id} failed`, 'error');
+      }
+    } catch (e) { /* ignore */ }
+  }
+  renderLiveJobs();
+  // Remove finished jobs from polling after rendering
+  for (const [id, info] of activeJobs) {
+    if (info.status === 'complete' || info.status === 'failed') {
+      setTimeout(() => { /* keep showing */ }, 0);
+    }
+  }
+}
+
+function renderLiveJobs() {
+  const container = document.getElementById('liveJobs');
+  if (activeJobs.size === 0) { container.innerHTML = ''; return; }
+
+  let html = '';
+  for (const [id, info] of activeJobs) {
+    if (info.status === 'complete' && info.result) {
+      const r = info.result;
+      const pct = r.total_max > 0 ? Math.round(r.total_score / r.total_max * 100) : 0;
+      const color = pct >= 85 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+      html += `<div class="card">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h3 style="margin:0;">${r.student_name} — ${r.test_code}</h3>
+            <span class="badge badge-complete">complete</span>
+            <span class="mono text-muted" style="margin-left:8px;">${id}</span>
+          </div>
+          <div class="flex gap-2 items-center">
+            <button class="btn btn-sm btn-secondary" onclick="exportCsv('${id}')">Export CSV</button>
+            <button class="btn btn-sm btn-secondary" onclick="viewInResults('${id}')">Full View</button>
+            <button class="btn btn-sm btn-danger" onclick="dismissJob('${id}')">Dismiss</button>
+            <div style="text-align:right;">
+              <div class="score-hero"><span class="num" style="color:${color}">${r.total_score}</span><span class="max">/ ${r.total_max}</span></div>
+              <div class="score-bar" style="width:120px;"><div class="fill" style="width:${pct}%;background:${color};"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="result-grid">${r.questions.map(q => renderQCard(q)).join('')}</div>
+      </div>`;
+    } else {
+      const statusBadge = info.status === 'failed' ? 'badge-failed' : info.status === 'running' ? 'badge-running' : 'badge-pending';
+      html += `<div class="card">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 style="margin:0;">${info.student} — ${info.test}</h3>
+            <span class="badge ${statusBadge}">${info.status}</span>
+            <span class="mono text-muted" style="margin-left:8px;">${id}</span>
+          </div>
+          <div class="flex gap-2 items-center">
+            ${info.status !== 'complete' && info.status !== 'failed' ? '<span class="spinner"></span> <span class="text-muted">Grading...</span>' : ''}
+            ${info.status === 'failed' ? '<button class="btn btn-sm btn-danger" onclick="dismissJob(\'' + id + '\')">Dismiss</button>' : ''}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+function renderQCard(q) {
+  const pct = q.total_max > 0 ? (q.total_score / q.total_max * 100) : 0;
+  const color = pct === 100 ? 'var(--green)' : pct >= 50 ? 'var(--yellow)' : 'var(--red)';
+  return `<div class="q-card">
+    <div class="q-top">
+      <span class="q-label">Q${q.question}</span>
+      <span class="q-score" style="color:${color}">${q.total_score}/${q.total_max}</span>
+    </div>
+    <div class="q-meta">
+      Ideas ${q.ideas_score}/${q.ideas_max} &middot; Conv ${q.conventions_score}/${q.conventions_max}
+      &middot; <span class="badge badge-${q.consensus_method}">${q.consensus_method}</span>
+      ${q.run_scores ? `<span style="color:var(--dim)">runs [${q.run_scores.join(',')}]</span>` : ''}
+    </div>
+    <div class="q-feedback">${q.feedback || '<em>No feedback</em>'}</div>
+  </div>`;
+}
+
+function dismissJob(id) { activeJobs.delete(id); renderLiveJobs(); }
+
+function viewInResults(id) {
+  document.querySelectorAll('.nav-item')[1].click();
+  showResultDetail(id);
+}
+
+// --- Results page ---
+function debounceLoadJobs() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadJobs, 300);
+}
+
+async function loadJobs() {
+  try {
+    const search = document.getElementById('r-search').value.trim();
+    const status = document.getElementById('r-filter').value;
+    let url = '/grade?limit=50';
+    if (status) url += `&status=${status}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    const data = await api('GET', url);
+
+    const body = document.getElementById('jobsBody');
+    if (data.jobs.length === 0) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">No grading jobs found</td></tr>';
+      return;
+    }
+    body.innerHTML = data.jobs.map(j => {
+      const score = j.total_score !== null ? `<strong>${j.total_score}</strong>/${j.total_max}` : '—';
+      const date = j.created_at ? j.created_at.slice(0, 16).replace('T', ' ') : '';
+      return `<tr>
+        <td class="mono">${j.id}</td>
+        <td><strong>${j.student_name}</strong></td>
+        <td>${j.test_code}</td>
+        <td>${score}</td>
+        <td><span class="badge badge-${j.status}">${j.status}</span></td>
+        <td class="text-muted">${date}</td>
+        <td class="table-actions">
+          ${j.status === 'complete' ? `
+            <button class="btn btn-sm btn-secondary" onclick="showResultDetail('${j.id}')">View</button>
+            <button class="btn btn-sm btn-secondary" onclick="exportCsv('${j.id}')">CSV</button>
+          ` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function showResultDetail(id) {
+  const div = document.getElementById('resultDetail');
+  div.innerHTML = '<div class="card"><span class="spinner"></span> Loading...</div>';
+  try {
+    const r = await api('GET', `/grade/${id}/result`);
+    const job = await api('GET', `/grade/${id}/status`);
+    const pct = r.total_max > 0 ? Math.round(r.total_score / r.total_max * 100) : 0;
+    const color = pct >= 85 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+
+    let html = `<div class="card">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 style="margin:0;">${r.student_name} — ${r.test_code}</h3>
+          <div class="mt-2 text-muted" style="font-size:0.8rem;">
+            Job: <span class="mono">${id}</span>
+            &middot; Submitted: ${job.created_at?.slice(0,16).replace('T',' ')}
+            &middot; Completed: ${job.completed_at?.slice(0,16).replace('T',' ') || '—'}
+          </div>
+        </div>
+        <div class="flex gap-3 items-center">
+          <button class="btn btn-sm btn-secondary" onclick="exportCsv('${id}')">Export CSV</button>
+          <div style="text-align:right;">
+            <div class="score-hero"><span class="num" style="color:${color}">${r.total_score}</span><span class="max">/ ${r.total_max}</span></div>
+            <div class="score-bar" style="width:140px;"><div class="fill" style="width:${pct}%;background:${color};"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    // Stats row
+    const unanimous = r.questions.filter(q => q.consensus_method === 'unanimous').length;
+    const majority = r.questions.filter(q => q.consensus_method === 'majority').length;
+    const judge = r.questions.filter(q => q.consensus_method === 'judge').length;
+    html += `<div class="stats">
+      <div class="stat"><div class="value">${r.questions.length}</div><div class="label">Questions</div></div>
+      <div class="stat"><div class="value text-green">${unanimous}</div><div class="label">Unanimous</div></div>
+      <div class="stat"><div class="value text-yellow">${majority}</div><div class="label">Majority</div></div>
+      <div class="stat"><div class="value text-accent">${judge}</div><div class="label">Judge</div></div>
+    </div>`;
+
+    html += '<div class="result-grid">';
+    for (const q of r.questions) html += renderQCard(q);
+    html += '</div>';
+
+    div.innerHTML = html;
+    div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    div.innerHTML = `<div class="card"><p style="color:var(--red);">${e.message}</p></div>`;
+  }
+}
+
+async function exportCsv(id) {
+  try {
+    const res = await api('GET', `/grade/${id}/export`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = res.headers.get('content-disposition')?.split('filename=')[1] || 'results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV downloaded');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// --- Tests ---
+async function loadTests() {
+  try {
+    const data = await api('GET', '/tests');
+    const body = document.getElementById('testsBody');
+    if (data.tests.length === 0) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">No tests. Use "Sync from Filesystem" to import.</td></tr>';
+      return;
+    }
+    body.innerHTML = data.tests.map(t =>
+      `<tr><td><strong>${t.test_code}</strong></td><td>${t.grade_level}</td><td>${t.title || '<em class="text-muted">—</em>'}</td><td class="text-muted">${(t.updated_at || '').slice(0,10)}</td></tr>`
+    ).join('');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function uploadTest() {
+  try {
+    let questions = {};
+    const qVal = document.getElementById('t-questions').value.trim();
+    if (qVal) questions = JSON.parse(qVal);
+    await api('POST', '/tests', {
+      test_code: document.getElementById('t-code').value,
+      grade_level: parseInt(document.getElementById('t-grade').value),
+      title: document.getElementById('t-title').value,
+      passage: document.getElementById('t-passage').value,
+      questions,
+      q11_article: document.getElementById('t-q11').value || null,
+    });
+    toast('Test saved');
+    loadTests();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function syncFilesystem() {
+  try {
+    const data = await api('POST', '/admin/sync');
+    toast(`Synced: ${data.tests_synced} tests, ${data.prompts_synced} prompts`);
+    loadTests();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// --- Prompts ---
+async function uploadPrompt() {
+  try {
+    const code = document.getElementById('p-code').value.trim();
+    if (!code) throw new Error('Enter a test code');
+    await api('POST', `/prompts/${code}`, {
+      prompt_text: document.getElementById('p-text').value,
+      version: document.getElementById('p-version').value,
+    });
+    toast('Prompt saved');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function checkPrompt() {
+  const code = document.getElementById('p-check').value.trim();
+  if (!code) return;
+  try {
+    const p = await api('GET', `/prompts/${code}`);
+    const src = p.created_at === 'filesystem' ? 'Filesystem' : 'Database';
+    document.getElementById('promptInfo').innerHTML =
+      `<div style="background:var(--bg);padding:10px 14px;border-radius:var(--radius);font-size:0.82rem;">
+        <strong class="text-accent">${p.test_code}</strong> &middot;
+        Version: ${p.version} &middot; Source: ${src} &middot;
+        ${p.prompt_length.toLocaleString()} characters &middot;
+        <span class="badge badge-complete">active</span>
+      </div>`;
+  } catch (e) {
+    document.getElementById('promptInfo').innerHTML = `<p style="color:var(--red);font-size:0.82rem;">${e.message}</p>`;
+  }
+}
+</script>
+</body>
+</html>
