@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: writing-grader
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
