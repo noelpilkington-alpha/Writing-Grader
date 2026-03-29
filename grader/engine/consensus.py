@@ -16,6 +16,55 @@ from .models import QuestionScore, ConsensusResult, ConsensusMethod, sub_maxes
 from .scorer import score_question
 
 
+# ---------------------------------------------------------------------------
+# Gibberish / nonsense detection
+# ---------------------------------------------------------------------------
+
+def _is_gibberish(text: str) -> bool:
+    """Detect if a student response is gibberish or nonsense.
+
+    Returns True if the text appears to be random characters, repeated
+    characters, keyboard mashing, or otherwise not a genuine attempt at
+    a written response.
+    """
+    if not text or not text.strip():
+        return True
+
+    cleaned = text.strip()
+
+    # Very short responses (single character after stripping spaces)
+    no_spaces = cleaned.replace(" ", "")
+    if len(no_spaces) < 2:
+        return True
+
+    # Single character repeated (e.g., "ooooooooooo", "lllllll", "aaa")
+    unique_chars = set(no_spaces.lower())
+    if len(unique_chars) <= 2 and len(no_spaces) > 2:
+        return True
+
+    # Single character or token repeated with spaces (e.g., "l l l l l", "S S S S")
+    tokens = cleaned.split()
+    unique_tokens = set(t.lower() for t in tokens)
+    if len(tokens) >= 3 and len(unique_tokens) <= 2 and all(len(t) <= 2 for t in tokens):
+        return True
+
+    # Random consonant clusters with no vowels — keyboard mashing
+    # (e.g., "VV JFDRFV EKDXC KJKRF RGRGN")
+    vowels = set("aeiouAEIOU")
+    if len(no_spaces) >= 6:
+        vowel_count = sum(1 for c in no_spaces if c in vowels)
+        vowel_ratio = vowel_count / len(no_spaces)
+        # Real English has ~35-40% vowels; gibberish typically < 10%
+        if vowel_ratio < 0.10 and len(no_spaces) > 5:
+            return True
+
+    # All same word repeated (e.g., "dog dog dog dog dog")
+    if len(tokens) >= 3 and len(unique_tokens) == 1:
+        return True
+
+    return False
+
+
 def _pick_best_feedback(runs: list[QuestionScore]) -> QuestionScore:
     """From a set of runs with the same score, pick the one with the longest feedback.
 
@@ -160,6 +209,16 @@ def grade_question_consensus(
             final_score=blank,
             consensus_method=ConsensusMethod.SINGLE,
             runs=[blank],
+        )
+
+    # Gibberish detection — catch nonsense before wasting API calls
+    if _is_gibberish(response):
+        gibberish = QuestionScore.gibberish(qnum, max_score)
+        return ConsensusResult(
+            question=qnum,
+            final_score=gibberish,
+            consensus_method=ConsensusMethod.SINGLE,
+            runs=[gibberish],
         )
 
     # Run graders in parallel

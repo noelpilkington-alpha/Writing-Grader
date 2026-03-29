@@ -114,6 +114,16 @@ Use comparative judgement to resolve borderline cases:
 If the essay reads clearly as Proficient overall, favor the higher score even with small omissions.
 Never reveal numeric scores, trait names, or rubric language.
 
+🚫 GIBBERISH / NONSENSE GATE (NON-NEGOTIABLE)
+Before grading, verify that ⟦{{response}}⟧ is a genuine attempt at a written answer.
+If the response consists of:
+  - Random characters or keyboard mashing (e.g., "asdfghjkl", "VV JFDRFV EKDXC")
+  - A single character or symbol repeated (e.g., "ooooooo", "l l l l l l")
+  - Placeholder text with no real words (e.g., "S S S S S S")
+  - Any text that contains no recognizable English words or meaning
+→ Score ALL traits 0 immediately (total = 0/20). Do NOT attempt to interpret, infer, or grade the response.
+→ Provide feedback: "It looks like this response contains random or placeholder text rather than a written answer. Take your time and give it a real try — even a short, honest answer can earn points!"
+
 🔹 VISIBLE PHASE — FEEDBACK OUTPUT (student-facing only)
 Write one teacher-style feedback paragraph (3–5 sentences) using the structure below.
 Tone & Phrasing Rules

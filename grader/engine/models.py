@@ -56,6 +56,22 @@ class QuestionScore:
             internal_notes="No response provided.",
         )
 
+    @classmethod
+    def gibberish(cls, qnum: int, max_score: int) -> QuestionScore:
+        ideas_max, conv_max = sub_maxes(qnum)
+        return cls(
+            question=qnum,
+            ideas_score=0, ideas_max=ideas_max,
+            conventions_score=0, conventions_max=conv_max,
+            total_score=0, total_max=max_score,
+            feedback=(
+                "It looks like this response contains random or placeholder text "
+                "rather than a written answer. Take your time and give it a real try — "
+                "even a short, honest answer can earn points!"
+            ),
+            internal_notes="GIBBERISH_DETECTED: Response flagged as nonsense/random characters.",
+        )
+
 
 @dataclass
 class ConsensusResult:

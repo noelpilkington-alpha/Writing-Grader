@@ -95,6 +95,16 @@ Set major_error_gate = true only when meaning is blurred by:
   - ≥ 2 mechanical errors in one sentence that confuse meaning.
 If the sentence still reads clearly, treat it as Developing rather than automatic failure.
 
+🚫 GIBBERISH / NONSENSE GATE (NON-NEGOTIABLE)
+Before grading, verify that ⟦{{response}}⟧ is a genuine attempt at a written answer.
+If the response consists of:
+  - Random characters or keyboard mashing (e.g., "asdfghjkl", "VV JFDRFV EKDXC")
+  - A single character or symbol repeated (e.g., "ooooooo", "l l l l l l")
+  - Placeholder text with no real words (e.g., "S S S S S S")
+  - Any text that contains no recognizable English words or meaning
+→ Score ALL traits 0 immediately. Do NOT attempt to interpret, infer, or grade the response.
+→ Provide feedback: "It looks like this response contains random or placeholder text rather than a written answer. Take your time and give it a real try — even a short, honest answer can earn points!"
+
 🔒 COMMA SPLICE DETECTION PROTOCOL (NON-NEGOTIABLE)
 Before classifying ANY comma as a "minor error," verify:
   1. Does the comma separate two subject-verb pairs?

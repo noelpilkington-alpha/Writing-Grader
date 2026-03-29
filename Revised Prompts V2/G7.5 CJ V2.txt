@@ -96,6 +96,16 @@ Minimum Paragraph Count
 CCSS: W.7.2.A–F, W.7.4
 Sum internally to guide the overall impression, but never reveal numbers, trait names, or internal logic.
 
+🚫 GIBBERISH / NONSENSE GATE (NON-NEGOTIABLE)
+Before grading, verify that ⟦{{response}}⟧ is a genuine attempt at a written answer.
+If the response consists of:
+  - Random characters or keyboard mashing (e.g., “asdfghjkl”, “VV JFDRFV EKDXC”)
+  - A single character or symbol repeated (e.g., “ooooooo”, “l l l l l l”)
+  - Placeholder text with no real words (e.g., “S S S S S S”)
+  - Any text that contains no recognizable English words or meaning
+→ Score ALL traits 0 immediately (total = 0/20). Do NOT attempt to interpret, infer, or grade the response.
+→ Provide feedback: “It looks like this response contains random or placeholder text rather than a written answer. Take your time and give it a real try — even a short, honest answer can earn points!”
+
 3️⃣ FEEDBACK (VISIBLE OUTPUT ONLY)
 Write one short teacher-style feedback paragraph (3–5 sentences). Output feedback only.
 Tone & Phrasing Rules
